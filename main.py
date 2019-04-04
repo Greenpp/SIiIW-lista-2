@@ -1,1 +1,3 @@
-print('hello')
+from scp import SCP
+
+scp = SCP()
