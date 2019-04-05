@@ -110,7 +110,8 @@ class _Variable:
         """
         Create variable with given domain
 
-        :param domain: immutable domain
+        :param id_:     Variable identifier
+        :param domain:  Immutable domain
         """
         self.id_ = id_
         self.domain = domain
@@ -146,7 +147,7 @@ class _Variable:
         """
         Get objects hash
 
-        :return: Objects hash
+        :return:    Objects hash
         """
         return hash(self.id_)
 
@@ -160,7 +161,7 @@ class _Variable:
         """
         Get size of work domain
 
-        :return: Size of work domain
+        :return:    Size of work domain
         """
         return len(self.work_domain)
 
