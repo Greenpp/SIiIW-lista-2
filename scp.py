@@ -32,6 +32,8 @@ class SCP:
         self.constraints = dict()
         self.pointer = -1
 
+        self.visual = None
+
     def load_data(self, file_path, type_=None):
         """
         Load data from file
@@ -123,6 +125,7 @@ class SCP:
 
             # Tmp structure for constraints definition
             tmp_table = [[] for i in range(n)]
+            self.visual = tmp_table
 
             # Load variables
             f.readline()  # Skip 'START:'
@@ -190,8 +193,9 @@ class SCP:
         Move pointer one step forward and prepare variable
         """
         self.pointer += 1
-        self._current_variable().push_state()
-        self._current_variable().next_value()
+        if self.pointer < len(self.call_stack):
+            self._current_variable().push_state()
+            self._current_variable().next_value()
 
     def _step_backward(self):
         """
@@ -231,16 +235,18 @@ class SCP:
             if self._check():
                 self._step_forward()
             else:
-                while self._current_variable().domain_size():
+                while not self._current_variable().domain_size():
                     self._step_backward()
                     if self.pointer < 0:
                         break
                 self._current_variable().next_value()
 
         if self.pointer == -1:
-            print('Found')
-        else:
             print('Not found')
+        else:
+            print('Found')
+            for row in self.visual:
+                print([v.value for v in row])
 
 
 class _Variable:
