@@ -30,7 +30,7 @@ class SCP:
         self.order = order
         self.call_stack = []
         self.constraints = dict()
-        self.pointer = 0
+        self.pointer = -1
 
     def load_data(self, file_path, type_=None):
         """
@@ -85,7 +85,7 @@ class SCP:
             for i in range(n):
                 for j in range(n):
                     pos = (i, j)
-                    var = _Variable(pos, default_domain)
+                    var = _Variable(pos, default_domain.copy())
 
                     tmp_table[i].append(var)
 
@@ -95,7 +95,7 @@ class SCP:
             for line in f:
                 line = line.rstrip()
 
-                for side, *vals in line.split(';'):
+                for side, *values in line.split(';'):
                     if side == 'G':
                         pass
                     elif side == 'D':
@@ -133,16 +133,16 @@ class SCP:
                 # Load variables for row
                 for j, val in enumerate(cells):
                     val = int(val)
-                    domain = tuple(default_domain) if val == 0 else (val,)
+                    domain = default_domain.copy() if val == 0 else [val]
                     pos = (i, j)
 
                     var = _Variable(pos, domain)
                     tmp_table[i].append(var)
+                    self.constraints[var] = []
 
                     # Add only mutable variables to stack
                     if not var.fixed:
                         self.call_stack.append(var)
-                        self.constraints[var] = []
 
             # Load relations
             f.readline()  # Skip 'REL:'
@@ -178,7 +178,7 @@ class SCP:
 
         return True
 
-    def _order_stack(self, method):
+    def _order_stack(self, method, start_pos=0):
         """
         Arrange call stack
         """
@@ -189,22 +189,58 @@ class SCP:
         """
         Move pointer one step forward and prepare variable
         """
-        # TODO
-        pass
+        self.pointer += 1
+        self._current_variable().push_state()
+        self._current_variable().next_value()
 
     def _step_backward(self):
         """
         Move pointer one step backward
         """
-        # TODO
-        pass
+        self._current_variable().pop_state()
+        self._current_variable().value = None
+        self.pointer -= 1
+
+    def _current_variable(self):
+        """
+        Get current variable
+
+        :return:    Current variable
+        """
+        return self.call_stack[self.pointer]
+
+    def _check(self):
+        """
+        Check if all constraints for current variable are satisfied
+        :return:
+        """
+        current_var = self._current_variable()
+
+        for constraint in self.constraints[current_var]:
+            if not constraint.check():
+                return False
+
+        return True
 
     def run(self):
         """
         Start problem solving
         """
-        # TODO
-        pass
+        self._step_forward()
+        while -1 < self.pointer < len(self.call_stack):
+            if self._check():
+                self._step_forward()
+            else:
+                while self._current_variable().domain_size():
+                    self._step_backward()
+                    if self.pointer < 0:
+                        break
+                self._current_variable().next_value()
+
+        if self.pointer == -1:
+            print('Found')
+        else:
+            print('Not found')
 
 
 class _Variable:
@@ -213,8 +249,8 @@ class _Variable:
 
     Attributes:
         id_             Unique variable identifier
-        domain          Domain of the variable, immutable
-        work_domain     Modifiable domain used for value picking
+        domain          Domain of the variable
+        state_stack     Stack of domain states
         value           Current value of the variable
         fixed           If variable value is fixed
     """
@@ -224,11 +260,11 @@ class _Variable:
         Create variable with given domain
 
         :param id_:     Variable identifier
-        :param domain:  Immutable domain
+        :param domain:  Variables domain
         """
         self.id_ = id_
         self.domain = domain
-        self.work_domain = None
+        self.state_stack = []
         if len(domain) == 1:
             self.value = domain[0]
             self.fixed = True
@@ -264,30 +300,36 @@ class _Variable:
         """
         return hash(self.id_)
 
-    def reset_domain(self):
+    def push_state(self):
         """
-        Copy domain into work domain
+        Push domain state onto stack
         """
-        self.work_domain = list(self.domain)
+        self.state_stack.append(self.domain.copy())
+
+    def pop_state(self):
+        """
+        Pop domain state from stack
+        """
+        self.domain = self.state_stack.pop()
 
     def domain_size(self):
         """
-        Get size of work domain
+        Get size of domain
 
-        :return:    Size of work domain
+        :return:    Size of domain
         """
-        return len(self.work_domain)
+        return len(self.domain)
 
-    def set_next_value(self):
+    def next_value(self):
         """
         Set variables value to next value from work domain
         """
-        self.value = self.work_domain.pop()
+        self.value = self.domain.pop()
 
-    def filter_domain(self, paradigm):
+    def filter_domain(self, predicate):
         """
-        Filter work domain with given paradigm
+        Filter work domain with given predicate
 
-        :param paradigm:    Paradigm to filter with
+        :param predicate:    Predicate to filter with
         """
-        self.work_domain = list(filter(paradigm, self.work_domain))
+        self.domain = list(filter(predicate, self.domain))

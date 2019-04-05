@@ -22,20 +22,22 @@ class FutoshikiRowConstraint:
 
         return len(set_values) == len(set(set_values))
 
-    def purge(self, var):
+    def purge(self, var, pop=False):
         """
         Remove current variable value from all work domains in row
 
         :param var: Variable to get value from
+        :param pop: If variables states should be popped from state stack
         """
 
-        # TODO rethink
-        def paradigm(x):
+        def predicate(x):
             return x != var.value
 
         for row_var in self.vars_:
             if row_var != var:
-                row_var.filter_domain(paradigm)
+                if pop:
+                    row_var.pop_state()
+                row_var.filter_domain(predicate)
 
 
 class FutoshikiRelationConstraint:
@@ -64,20 +66,26 @@ class FutoshikiRelationConstraint:
 
         return self.var1.value < self.var2.value
 
-    def purge(self, var):
+    def purge(self, var, pop=False):
         """
         Remove all values not meeting constraint from other variables working domain
 
         :param var:  Variable to leave unchanged
+        :param pop: If variables states should be popped from state stack
         """
-        # TODO rethink
         if var == self.var1:
-            def paradigm(x):
+            if pop:
+                self.var2.pop_state()
+
+            def predicate(x):
                 return x > var.value
 
-            self.var2.filter_domain(paradigm)
+            self.var2.filter_domain(predicate)
         else:
-            def paradigm(x):
+            if pop:
+                self.var1.pop_state()
+
+            def predicate(x):
                 return x < var.value
 
-            self.var1.filter_domain(paradigm)
+            self.var1.filter_domain(predicate)
