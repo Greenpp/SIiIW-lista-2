@@ -147,10 +147,10 @@ class SCP:
                 cell1, cell2 = line.split(';')
 
                 row1 = ord(cell1[0]) - 65
-                col1 = int(cell1[1:])
+                col1 = int(cell1[1:]) - 1
 
                 row2 = ord(cell2[0]) - 65
-                col2 = int(cell2[1:])
+                col2 = int(cell2[1:]) - 1
 
                 var1 = tmp_table[row1][col1]
                 var2 = tmp_table[row2][col2]
