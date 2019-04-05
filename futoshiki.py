@@ -2,11 +2,82 @@ class FutoshikiRowConstraint:
     """
     Constraint of row integrity in futoshiki
     """
-    pass
+
+    def __init__(self, vars_):
+        """
+        Create row constraint where every value must be unique
+
+        :param vars_:   Variables in row
+        """
+        self.vars_ = vars_
+
+    def check(self):
+        """
+        Check if constraint is meet
+
+        :return: If constraint is meet
+        """
+        # Filter out Nones
+        set_values = [v.value for v in self.vars_ if v.value is not None]
+
+        return len(set_values) == len(set(set_values))
+
+    def purge(self, var):
+        """
+        Remove current variable value from all work domains in row
+
+        :param var: Variable to get value from
+        """
+
+        # TODO rethink
+        def paradigm(x):
+            return x != var.value
+
+        for row_var in self.vars_:
+            if row_var != var:
+                row_var.filter_domain(paradigm)
 
 
 class FutoshikiRelationConstraint:
     """
     Constraint of relation in futoshiki
     """
-    pass
+
+    def __init__(self, var1, var2):
+        """
+        Create relation constraint with 2 variables, where v1 < v2
+
+        :param var1:    First variable
+        :param var2:    Second variable
+        """
+        self.var1 = var1
+        self.var2 = var2
+
+    def check(self):
+        """
+        Check if constraint is meet
+
+        :return:    If constraint is meet
+        """
+        if self.var1.value is None or self.var2.value is None:
+            return True
+
+        return self.var1.value < self.var2.value
+
+    def purge(self, var):
+        """
+        Remove all values not meeting constraint from other variables working domain
+
+        :param var:  Variable to leave unchanged
+        """
+        # TODO rethink
+        if var == self.var1:
+            def paradigm(x):
+                return x > var.value
+
+            self.var2.filter_domain(paradigm)
+        else:
+            def paradigm(x):
+                return x < var.value
+
+            self.var1.filter_domain(paradigm)

@@ -1,3 +1,6 @@
+from futoshiki import FutoshikiRowConstraint, FutoshikiRelationConstraint
+
+
 class SCP:
     """
     Constraint Satisfaction Problem engine
@@ -139,6 +142,7 @@ class SCP:
                     # Add only mutable variables to stack
                     if not var.fixed:
                         self.call_stack.append(var)
+                        self.constraints[var] = []
 
             # Load relations
             f.readline()  # Skip 'REL:'
@@ -155,14 +159,22 @@ class SCP:
                 var1 = tmp_table[row1][col1]
                 var2 = tmp_table[row2][col2]
 
-                # TODO create constraint var1 < var2
+                constraint = FutoshikiRelationConstraint(var1, var2)
+                self.constraints[var1].append(constraint)
+                self.constraints[var2].append(constraint)
 
             # Create rows and columns constrains
             for i in range(n):
                 row_vars = tmp_table[i]
                 col_vars = [tmp_table[r][i] for r in range(n)]
 
-                # TODO create rows and columns constraints
+                row_constraint = FutoshikiRowConstraint(row_vars)
+                for var in row_vars:
+                    self.constraints[var].append(row_constraint)
+
+                col_constraint = FutoshikiRowConstraint(col_vars)
+                for var in col_vars:
+                    self.constraints[var].append(col_constraint)
 
         return True
 
@@ -271,3 +283,11 @@ class _Variable:
         Set variables value to next value from work domain
         """
         self.value = self.work_domain.pop()
+
+    def filter_domain(self, paradigm):
+        """
+        Filter work domain with given paradigm
+
+        :param paradigm:    Paradigm to filter with
+        """
+        self.work_domain = list(filter(paradigm, self.work_domain))
