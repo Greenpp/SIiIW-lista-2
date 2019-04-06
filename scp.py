@@ -32,7 +32,7 @@ class SCP:
         self.constraints = dict()
         self.pointer = -1
 
-        self.visual = None
+        self.state = None
 
     def load_data(self, file_path, type_=None):
         """
@@ -54,8 +54,8 @@ class SCP:
             }
             separator = '/' if '/' in file_path else '\\'
             file_name = file_path.split(separator)[-1].lower()
-            for word, t in file_types.items():
-                if word in file_name:
+            for _, t in file_types.items():
+                if t in file_name:
                     type_ = t
                     break
 
@@ -81,7 +81,7 @@ class SCP:
             default_domain = [v + 1 for v in range(n)]
 
             # Tmp structure for constraints definition
-            tmp_table = [[] for i in range(n)]
+            self.state = [[] for i in range(n)]
 
             # Create variables
             for i in range(n):
@@ -89,7 +89,7 @@ class SCP:
                     pos = (i, j)
                     var = _Variable(pos, default_domain.copy())
 
-                    tmp_table[i].append(var)
+                    self.state[i].append(var)
 
                     self.call_stack.append(var)
 
@@ -124,8 +124,7 @@ class SCP:
             default_domain = [v + 1 for v in range(n)]
 
             # Tmp structure for constraints definition
-            tmp_table = [[] for i in range(n)]
-            self.visual = tmp_table
+            self.state = [[] for i in range(n)]
 
             # Load variables
             f.readline()  # Skip 'START:'
@@ -140,7 +139,7 @@ class SCP:
                     pos = (i, j)
 
                     var = _Variable(pos, domain)
-                    tmp_table[i].append(var)
+                    self.state[i].append(var)
                     self.constraints[var] = []
 
                     # Add only mutable variables to stack
@@ -159,8 +158,8 @@ class SCP:
                 row2 = ord(cell2[0]) - 65
                 col2 = int(cell2[1:]) - 1
 
-                var1 = tmp_table[row1][col1]
-                var2 = tmp_table[row2][col2]
+                var1 = self.state[row1][col1]
+                var2 = self.state[row2][col2]
 
                 constraint = FutoshikiRelationConstraint(var1, var2)
                 self.constraints[var1].append(constraint)
@@ -168,8 +167,8 @@ class SCP:
 
             # Create rows and columns constrains
             for i in range(n):
-                row_vars = tmp_table[i]
-                col_vars = [tmp_table[r][i] for r in range(n)]
+                row_vars = self.state[i]
+                col_vars = [self.state[r][i] for r in range(n)]
 
                 row_constraint = FutoshikiRowConstraint(row_vars)
                 for var in row_vars:
@@ -216,7 +215,8 @@ class SCP:
     def _check(self):
         """
         Check if all constraints for current variable are satisfied
-        :return:
+
+        :return:    If all constrains are satisfied
         """
         current_var = self._current_variable()
 
@@ -228,30 +228,34 @@ class SCP:
 
     def run(self):
         """
-        Start problem solving
+        Solve problem and return final state
+
+        :return:    Final state if successful or None if failed
         """
         self._step_forward()
-        while -1 < self.pointer < len(self.call_stack):
+        while self.pointer < len(self.call_stack):
             if self._check():
                 self._step_forward()
             else:
                 while not self._current_variable().domain_size():
                     self._step_backward()
                     if self.pointer < 0:
-                        break
+                        return None
                 self._current_variable().next_value()
 
-        if self.pointer == -1:
-            print('Not found')
-        else:
-            print('Found')
-            for row in self.visual:
-                print([v.value for v in row])
+        return self.state
+
+    def visualize(self):
+        """
+        Visualize current state
+        """
+        for row in self.state:
+            print([v.value for v in row])
 
 
 class _Variable:
     """
-    Single variable in system
+    Single variable in problem
 
     Attributes:
         id_             Unique variable identifier
