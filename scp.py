@@ -16,18 +16,21 @@ class SCP:
         pointer         Index of variable currently changed, solving terminates when out of stack range
     """
 
-    def __init__(self, method='back', order='none'):
+    def __init__(self, method='back', order='none', dynamic_ordering=False):
         """
         Create empty SCP engine
 
-        :param method:  Method of problem solving:
-                                        back    - backtracking
-                                        forward - forward checking
-        :param order:   Method of ordering call stack
-                                        none    - stack is left in default order
+        :param method:              Method of problem solving:
+                                                    back    - backtracking
+                                                    forward - forward checking
+        :param order:               Method of ordering call stack
+                                                    none    - stack is left in default order
+        :param dynamic_ordering:    If stack should be ordered after each assigment
         """
         self.method = method
         self.order = order
+        self.dynamic_ordering = dynamic_ordering
+
         self.call_stack = []
         self.constraints = dict()
         self.pointer = -1
@@ -180,7 +183,7 @@ class SCP:
 
         return True
 
-    def _order_stack(self, method, start_pos=0):
+    def _order_stack(self):
         """
         Arrange call stack
         """
@@ -194,7 +197,7 @@ class SCP:
         self.pointer += 1
         if self.pointer < len(self.call_stack):
             self._current_variable().push_state()
-            self._current_variable().next_value()
+            self._load_value()
 
     def _step_backward(self):
         """
@@ -214,17 +217,51 @@ class SCP:
 
     def _check(self):
         """
-        Check if all constraints for current variable are satisfied
+        Check if current state is legitimate
 
-        :return:    If all constrains are satisfied
+        :return:    If state is valid
         """
-        current_var = self._current_variable()
+        # Check for empty domains when forward checking
+        if self.method == 'forward':
+            for var in self.call_stack[self.pointer + 1:]:
+                if not var.domain_size():
+                    return False
 
+        # Check current variable constraints
+        current_var = self._current_variable()
         for constraint in self.constraints[current_var]:
             if not constraint.check():
                 return False
 
         return True
+
+    def _load_value(self):
+        """
+        Load next value to current variable
+
+        When forward checking, before purging with new value last state must be restored
+        """
+        current_var = self._current_variable()
+        current_var.next_value()
+
+        if self.method == 'forward':
+            self._purge()
+
+    def _purge(self):
+        """
+        Purge values with current variable constraint
+        """
+        current_var = self._current_variable()
+        for constraint in self.constraints[current_var]:
+            constraint.purge(current_var)
+
+    def _reverse_purge(self):
+        """
+        Reverse last purge
+        """
+        current_var = self._current_variable()
+        for constraint in self.constraints[current_var]:
+            constraint.purge(current_var, reverse=True)
 
     def run(self):
         """
@@ -232,16 +269,20 @@ class SCP:
 
         :return:    Final state if successful or None if failed
         """
+        self._order_stack()
+
         self._step_forward()
         while self.pointer < len(self.call_stack):
             if self._check():
                 self._step_forward()
             else:
+                if self.method == 'forward':
+                    self._reverse_purge()
                 while not self._current_variable().domain_size():
                     self._step_backward()
                     if self.pointer < 0:
                         return None
-                self._current_variable().next_value()
+                self._load_value()
 
         return self.state
 
@@ -281,6 +322,14 @@ class _Variable:
         else:
             self.value = None
             self.fixed = False
+
+    def __str__(self):
+        """
+        Create text representation of variable
+
+        :return:    Text representation
+        """
+        return f'ID: {self.id_} | V: {self.value} | D: {self.domain}'
 
     def __eq__(self, other):
         """

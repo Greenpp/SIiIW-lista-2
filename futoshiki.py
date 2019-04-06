@@ -22,12 +22,12 @@ class FutoshikiRowConstraint:
 
         return len(set_values) == len(set(set_values))
 
-    def purge(self, var, pop=False):
+    def purge(self, var, reverse=False):
         """
         Remove current variable value from all work domains in row
 
-        :param var: Variable to get value from
-        :param pop: If variables states should be popped from state stack
+        :param var:     Variable to get value from
+        :param reverse: If purge should be reversed
         """
 
         def predicate(x):
@@ -35,9 +35,11 @@ class FutoshikiRowConstraint:
 
         for row_var in self.vars_:
             if row_var != var:
-                if pop:
+                if reverse:
                     row_var.pop_state()
-                row_var.filter_domain(predicate)
+                else:
+                    row_var.push_state()
+                    row_var.filter_domain(predicate)
 
 
 class FutoshikiRelationConstraint:
@@ -66,26 +68,30 @@ class FutoshikiRelationConstraint:
 
         return self.var1.value < self.var2.value
 
-    def purge(self, var, pop=False):
+    def purge(self, var, reverse=False):
         """
         Remove all values not meeting constraint from other variables working domain
 
-        :param var:  Variable to leave unchanged
-        :param pop: If variables states should be popped from state stack
+        :param var:     Variable to get value from
+        :param reverse: If purge should be reversed
         """
         if var == self.var1:
-            if pop:
-                self.var2.pop_state()
 
             def predicate(x):
                 return x > var.value
 
-            self.var2.filter_domain(predicate)
+            if reverse:
+                self.var2.pop_state()
+            else:
+                self.var2.push_state()
+                self.var2.filter_domain(predicate)
         else:
-            if pop:
-                self.var1.pop_state()
 
             def predicate(x):
                 return x < var.value
 
-            self.var1.filter_domain(predicate)
+            if reverse:
+                self.var1.pop_state()
+            else:
+                self.var1.push_state()
+                self.var1.filter_domain(predicate)
