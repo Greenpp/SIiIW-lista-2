@@ -279,7 +279,8 @@ class SCP:
             if forward_integrity and self._check():
                 self._step_forward()
             else:
-                self._reverse_purge()
+                if self.method == 'forward':
+                    self._reverse_purge()
                 while not self._current_variable().domain_size():
                     self._step_backward()
                     if self.pointer < 0:
