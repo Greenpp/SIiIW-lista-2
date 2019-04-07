@@ -22,24 +22,37 @@ class FutoshikiRowConstraint:
 
         return len(set_values) == len(set(set_values))
 
-    def purge(self, var, reverse=False):
+    def purge(self, var):
         """
-        Remove current variable value from all work domains in row
+        Remove all values not meeting constraint from other variables domains
 
-        :param var:     Variable to get value from
-        :param reverse: If purge should be reversed
+        :param var:     Variable to purge for
+
+        :return:    If all domains are left with at least one value
         """
+        valid_domains = True
 
         def predicate(x):
             return x != var.value
 
         for row_var in self.vars_:
             if row_var != var:
-                if reverse:
-                    row_var.pop_state()
-                else:
-                    row_var.push_state()
-                    row_var.filter_domain(predicate)
+                row_var.push_state()
+                row_var.filter_domain(predicate)
+                if row_var.value is None and not row_var.domain_size():
+                    valid_domains = False
+
+        return valid_domains
+
+    def reverse_purge(self, var):
+        """
+        Reverse states of variables changed with given variable purge
+
+        :param var: Variable which purge will be reversed
+        """
+        for row_var in self.vars_:
+            if row_var != var:
+                row_var.pop_state()
 
 
 class FutoshikiRelationConstraint:
@@ -68,30 +81,43 @@ class FutoshikiRelationConstraint:
 
         return self.var1.value < self.var2.value
 
-    def purge(self, var, reverse=False):
+    def purge(self, var):
         """
-        Remove all values not meeting constraint from other variables working domain
+        Remove all values not meeting constraint from other variables domains
 
-        :param var:     Variable to get value from
-        :param reverse: If purge should be reversed
+        :param var:     Variable to purge for
+
+        :return:    If all domains are left with at least one value
         """
+        valid_domains = True
         if var == self.var1:
 
             def predicate(x):
                 return x > var.value
 
-            if reverse:
-                self.var2.pop_state()
-            else:
-                self.var2.push_state()
-                self.var2.filter_domain(predicate)
+            self.var2.push_state()
+            self.var2.filter_domain(predicate)
+            if self.var2.value is None and not self.var2.domain_size():
+                valid_domains = False
         else:
 
             def predicate(x):
                 return x < var.value
 
-            if reverse:
-                self.var1.pop_state()
-            else:
-                self.var1.push_state()
-                self.var1.filter_domain(predicate)
+            self.var1.push_state()
+            self.var1.filter_domain(predicate)
+            if self.var1.value is None and not self.var1.domain_size():
+                valid_domains = False
+
+        return valid_domains
+
+    def reverse_purge(self, var):
+        """
+        Reverse states of variables changed with given variable purge
+
+        :param var: Variable which purge will be reversed
+        """
+        if var == self.var1:
+            self.var2.pop_state()
+        else:
+            self.var1.pop_state()

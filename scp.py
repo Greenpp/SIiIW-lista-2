@@ -203,9 +203,13 @@ class SCP:
         """
         Move pointer one step backward
         """
-        self._current_variable().pop_state()
-        self._current_variable().value = None
+        current_var = self._current_variable()
+        current_var.pop_state()
+        current_var.value = None
         self.pointer -= 1
+
+        if self.method == 'forward' and self.pointer > -1:
+            self._reverse_purge()
 
     def _current_variable(self):
         """
@@ -221,13 +225,6 @@ class SCP:
 
         :return:    If state is valid
         """
-        # Check for empty domains when forward checking
-        if self.method == 'forward':
-            for var in self.call_stack[self.pointer + 1:]:
-                if not var.domain_size():
-                    return False
-
-        # Check current variable constraints
         current_var = self._current_variable()
         for constraint in self.constraints[current_var]:
             if not constraint.check():
@@ -244,16 +241,19 @@ class SCP:
         current_var = self._current_variable()
         current_var.next_value()
 
-        if self.method == 'forward':
-            self._purge()
-
     def _purge(self):
         """
         Purge values with current variable constraint
+
+        :return:    If purge was successful
         """
+        success = True
         current_var = self._current_variable()
         for constraint in self.constraints[current_var]:
-            constraint.purge(current_var)
+            if not constraint.purge(current_var):
+                success = False
+
+        return success
 
     def _reverse_purge(self):
         """
@@ -261,7 +261,7 @@ class SCP:
         """
         current_var = self._current_variable()
         for constraint in self.constraints[current_var]:
-            constraint.purge(current_var, reverse=True)
+            constraint.reverse_purge(current_var)
 
     def run(self):
         """
@@ -273,11 +273,13 @@ class SCP:
 
         self._step_forward()
         while self.pointer < len(self.call_stack):
-            if self._check():
+            forward_integrity = True
+            if self.method == 'forward':
+                forward_integrity = self._purge()
+            if forward_integrity and self._check():
                 self._step_forward()
             else:
-                if self.method == 'forward':
-                    self._reverse_purge()
+                self._reverse_purge()
                 while not self._current_variable().domain_size():
                     self._step_backward()
                     if self.pointer < 0:
