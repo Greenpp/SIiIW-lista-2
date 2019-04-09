@@ -32,6 +32,7 @@ class SCP:
         self.dynamic_ordering = dynamic_ordering
 
         self.call_stack = []
+        self.fixed_variables = []
         self.constraints = dict()
         self.pointer = -1
 
@@ -148,6 +149,8 @@ class SCP:
                     # Add only mutable variables to stack
                     if not var.fixed:
                         self.call_stack.append(var)
+                    else:
+                        self.fixed_variables.append(var)
 
             # Load relations
             f.readline()  # Skip 'REL:'
@@ -241,6 +244,20 @@ class SCP:
         current_var = self._current_variable()
         current_var.next_value()
 
+    def _initial_purge(self):
+        """
+        Purge values with fixed variables
+
+        :return:    If purge was successful
+        """
+        success = True
+        for variable in self.fixed_variables:
+            for constraint in self.constraints[variable]:
+                if not constraint.purge(variable):
+                    success = False
+
+        return success
+
     def _purge(self):
         """
         Purge values with current variable constraint
@@ -270,13 +287,18 @@ class SCP:
         :return:    Final state if successful or None if failed
         """
         self._order_stack()
+        forward_integrity = self._initial_purge()
+        if not forward_integrity:
+            return None
 
         self._step_forward()
         while self.pointer < len(self.call_stack):
-            forward_integrity = True
             if self.method == 'forward':
                 forward_integrity = self._purge()
-            if forward_integrity and self._check():
+            else:
+                forward_integrity = self._check()
+
+            if forward_integrity:
                 self._step_forward()
             else:
                 if self.method == 'forward':
