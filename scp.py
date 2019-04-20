@@ -16,7 +16,7 @@ class SCP:
         pointer         Index of variable currently changed, solving terminates when out of stack range
     """
 
-    def __init__(self, method='back', order='none', dynamic_ordering=False):
+    def __init__(self, method='back', order='none', dynamic_ordering=False, all_solutions=False):
         """
         Create empty SCP engine
 
@@ -30,6 +30,7 @@ class SCP:
         self.method = method
         self.order = order
         self.dynamic_ordering = dynamic_ordering
+        self.all_solutions = all_solutions
 
         self.call_stack = []
         self.fixed_variables = []
@@ -37,6 +38,7 @@ class SCP:
         self.pointer = -1
 
         self.state = None
+        self.solutions = []  # TODO
 
     def load_data(self, file_path, type_=None):
         """
@@ -87,7 +89,6 @@ class SCP:
             n = int(f.readline())  # Read the size
             default_domain = [v + 1 for v in range(n)]
 
-            # Tmp structure for constraints definition
             self.state = [[] for i in range(n)]
 
             # Create variables
@@ -133,7 +134,6 @@ class SCP:
             n = int(f.readline())  # Read the size
             default_domain = [v + 1 for v in range(n)]
 
-            # Tmp structure for constraints definition
             self.state = [[] for i in range(n)]
 
             # Load variables
@@ -300,8 +300,15 @@ class SCP:
             return None
 
         self._step_forward()
-        while self.pointer < len(self.call_stack):
-            if self.method == 'forward':
+        while True:
+            if self.pointer == len(self.call_stack):
+                self._save_state_as_solution()
+                if not self.all_solutions:
+                    return
+
+                self.pointer -= 1
+                forward_integrity = False
+            elif self.method == 'forward':
                 forward_integrity = self._purge()
             else:
                 forward_integrity = self._check()
@@ -314,10 +321,29 @@ class SCP:
                 while not self._current_variable().domain_size():
                     self._step_backward()
                     if self.pointer < 0:
-                        return None
+                        return
                 self._load_value()
 
-        return self.state
+    def _save_state_as_solution(self):
+        """
+        Save current state as solution
+        """
+        current_state = [[v.value for v in row] for row in self.state]
+
+        self.solutions.append(current_state)
+
+    def show_solutions(self):
+        """
+        Show all saved solutions
+        """
+        if self.solutions:
+            for solution in self.solutions:
+                for row in solution:
+                    print(row)
+                print('=' * 25)
+            print(f'Found {len(self.solutions)} solutions')
+        else:
+            print('No solutions found')
 
     def visualize(self):
         """
