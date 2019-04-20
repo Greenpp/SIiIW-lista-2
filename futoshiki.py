@@ -36,7 +36,7 @@ class FutoshikiRowConstraint:
             return x != var.value
 
         for row_var in self.vars_:
-            if row_var != var:
+            if row_var != var and row_var.value is None:
                 row_var.push_state()
                 row_var.filter_domain(predicate)
                 if row_var.value is None and not row_var.domain_size():
@@ -51,7 +51,7 @@ class FutoshikiRowConstraint:
         :param var: Variable which purge will be reversed
         """
         for row_var in self.vars_:
-            if row_var != var:
+            if row_var != var and row_var.value is None:
                 row_var.pop_state()
 
 
@@ -90,7 +90,7 @@ class FutoshikiRelationConstraint:
         :return:    If all domains are left with at least one value
         """
         valid_domains = True
-        if var == self.var1:
+        if var == self.var1 and self.var2.value is None:
 
             def predicate(x):
                 return x > var.value
@@ -99,7 +99,7 @@ class FutoshikiRelationConstraint:
             self.var2.filter_domain(predicate)
             if self.var2.value is None and not self.var2.domain_size():
                 valid_domains = False
-        else:
+        elif var == self.var2 and self.var1.value is None:
 
             def predicate(x):
                 return x < var.value
@@ -117,7 +117,7 @@ class FutoshikiRelationConstraint:
 
         :param var: Variable which purge will be reversed
         """
-        if var == self.var1:
+        if var == self.var1 and self.var2.value is None:
             self.var2.pop_state()
-        else:
+        elif var == self.var2 and self.var1.value is None:
             self.var1.pop_state()
