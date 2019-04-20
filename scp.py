@@ -79,8 +79,11 @@ class SCP:
 
         :return:    If data was loaded successfully
         """
-        with open(file_path) as f:
-            # TODO return False when failed
+        try:
+            f = open(file_path)
+        except IOError:
+            return False
+        with f:
             n = int(f.readline())  # Read the size
             default_domain = [v + 1 for v in range(n)]
 
@@ -122,8 +125,11 @@ class SCP:
 
         :return:    If data was loaded successfully
         """
-        with open(file_path) as f:
-            # TODO return False when failed
+        try:
+            f = open(file_path)
+        except IOError:
+            return False
+        with f:
             n = int(f.readline())  # Read the size
             default_domain = [v + 1 for v in range(n)]
 
@@ -156,6 +162,8 @@ class SCP:
             f.readline()  # Skip 'REL:'
             for line in f:
                 line = line.rstrip()
+                if line == '':
+                    continue
                 cell1, cell2 = line.split(';')
 
                 row1 = ord(cell1[0]) - 65
