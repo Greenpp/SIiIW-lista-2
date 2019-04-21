@@ -213,10 +213,10 @@ class SCP:
         """
         if self.order == 'max_dom':
             def key_(v):
-                return -v.domain_size()
+                return -v.domain_size
         elif self.order == 'min_dom':
             def key_(v):
-                return v.domain_size()
+                return v.domain_size
         elif self.order == 'max_con':
             def key_(v):
                 return -len(self.constraints[v])
@@ -348,7 +348,7 @@ class SCP:
             else:
                 if self.method == 'forward':
                     self._reverse_purge()
-                while not self._current_variable().domain_size():
+                while not self._current_variable().domain_size:
                     self._step_backward()
                     if self.pointer < 0:
                         return
@@ -460,7 +460,8 @@ class _Variable:
         """
         self.domain = self.state_stack.pop()
 
-    def domain_size(self):  # TODO make property
+    @property
+    def domain_size(self):
         """
         Get size of domain
 

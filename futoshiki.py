@@ -39,7 +39,7 @@ class FutoshikiRowConstraint:
             if row_var != var and row_var.value is None:
                 row_var.push_state()
                 row_var.filter_domain(predicate)
-                if row_var.value is None and not row_var.domain_size():
+                if row_var.value is None and not row_var.domain_size:
                     valid_domains = False
 
         return valid_domains
@@ -97,7 +97,7 @@ class FutoshikiRelationConstraint:
 
             self.var2.push_state()
             self.var2.filter_domain(predicate)
-            if self.var2.value is None and not self.var2.domain_size():
+            if self.var2.value is None and not self.var2.domain_size:
                 valid_domains = False
         elif var == self.var2 and self.var1.value is None:
 
@@ -106,7 +106,7 @@ class FutoshikiRelationConstraint:
 
             self.var1.push_state()
             self.var1.filter_domain(predicate)
-            if self.var1.value is None and not self.var1.domain_size():
+            if self.var1.value is None and not self.var1.domain_size:
                 valid_domains = False
 
         return valid_domains
