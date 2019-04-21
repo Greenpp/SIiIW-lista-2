@@ -90,7 +90,9 @@ class FutoshikiRelationConstraint:
         :return:    If all domains are left with at least one value
         """
         valid_domains = True
-        if var == self.var1 and self.var2.value is None:
+        if self.var1 == self.var2:
+            valid_domains = False
+        elif var == self.var1 and self.var2.value is None:
 
             def predicate(x):
                 return x > var.value
