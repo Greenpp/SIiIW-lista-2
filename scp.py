@@ -322,6 +322,7 @@ class SCP:
 
         :return:    Final state if successful or None if failed
         """
+        # Initial constraints check and ordering
         self._order_stack()
         forward_integrity = self._initial_purge()
         if not forward_integrity:
@@ -329,15 +330,20 @@ class SCP:
 
         self._step_forward()
         while True:
+            # Order
             if self.dynamic_ordering:
                 self._order_stack()
+
+            # Solution found
             if self.pointer == len(self.call_stack):
                 self._save_state_as_solution()
                 if not self.all_solutions:
-                    return
+                    return None
 
                 self.pointer -= 1
                 forward_integrity = False
+
+            # Integrity
             elif self.method == 'forward':
                 forward_integrity = self._purge()
             else:
@@ -351,7 +357,7 @@ class SCP:
                 while not self._current_variable().domain_size:
                     self._step_backward()
                     if self.pointer < 0:
-                        return
+                        return None
                 self._load_value()
 
     def _save_state_as_solution(self):
