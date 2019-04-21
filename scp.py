@@ -1,4 +1,5 @@
 from futoshiki import FutoshikiRowConstraint, FutoshikiRelationConstraint
+from skyscrapper import SkyscrapperRowConstraint, SkyscrapperVisibilityConstraint
 
 
 class SCP:
@@ -114,20 +115,46 @@ class SCP:
 
                     self.call_stack.append(var)
 
+            columns = [[row[i] for row in self.state] for i in range(len(self.state))]
+
             # Load constraints
+            # TODO add constraints as initial
             for line in f:
                 line = line.rstrip()
 
                 for side, *values in line.split(';'):
                     if side == 'G':
-                        pass
+                        for row, val in zip(columns, values):
+                            constraint_row = SkyscrapperRowConstraint(row)
+                            constraint_vis = SkyscrapperVisibilityConstraint(row, val)
+
+                            for var in row:
+                                self.constraints[var].append(constraint_row)
+                                self.constraints[var].append(constraint_vis)
                     elif side == 'D':
-                        pass
+                        for row, val in zip(columns, values):
+                            constraint_row = SkyscrapperRowConstraint(row)
+                            constraint_vis = SkyscrapperVisibilityConstraint(list(reversed(row)), val)
+
+                            for var in row:
+                                self.constraints[var].append(constraint_row)
+                                self.constraints[var].append(constraint_vis)
                     elif side == 'L':
-                        pass
+                        for row, val in zip(self.state, values):
+                            constraint_row = SkyscrapperRowConstraint(row)
+                            constraint_vis = SkyscrapperVisibilityConstraint(row, val)
+
+                            for var in row:
+                                self.constraints[var].append(constraint_row)
+                                self.constraints[var].append(constraint_vis)
                     elif side == 'P':
-                        pass
-                    # TODO create rows and columns constraints
+                        for row, val in zip(self.state, values):
+                            constraint_row = SkyscrapperRowConstraint(row)
+                            constraint_vis = SkyscrapperVisibilityConstraint(list(reversed(row)), val)
+
+                            for var in row:
+                                self.constraints[var].append(constraint_row)
+                                self.constraints[var].append(constraint_vis)
 
         return True
 
