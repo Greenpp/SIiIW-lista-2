@@ -6,14 +6,22 @@ class SCP:
     Constraint Satisfaction Problem engine
 
     Attributes:
-        method          Method of problem solving:
-                                        back    - backtracking
-                                        forward - forward checking
-        order           Method of ordering call stack:
-                                        none    - stack is left in default order
-        call_stack      List of variables in filling order
-        constraints     Dictionary of variable: list of constraints its included into
-        pointer         Index of variable currently changed, solving terminates when out of stack range
+        method              Method of problem solving:
+                                            back    - backtracking
+                                            forward - forward checking
+        order               Method of ordering call stack:
+                                            none    - stack is left in default order
+                                            max_dom - max to min domain size
+                                            min_dom - min to max domain size
+                                            max_con - max to min constraint num
+                                            min_con - min to max constraint num
+        dynamic_ordering    If call stack is being ordered during the search
+        all_solutions       If all solutions should be found
+        call_stack          List of variables in filling order
+        constraints         Dictionary of variable: list of constraints its included into
+        pointer             Index of variable currently changed, solving terminates when out of stack range
+        state               Current problem state
+        solutions           List of found solutions
     """
 
     def __init__(self, method='back', order='none', dynamic_ordering=False, all_solutions=False):
@@ -25,7 +33,12 @@ class SCP:
                                                     forward - forward checking
         :param order:               Method of ordering call stack
                                                     none    - stack is left in default order
+                                                    max_dom - max to min domain size
+                                                    min_dom - min to max domain size
+                                                    max_con - max to min constraint num
+                                                    min_con - min to max constraint num
         :param dynamic_ordering:    If stack should be ordered after each assigment
+        :param all_solutions:       If all possible solutions should be found
         """
         self.method = method
         self.order = order
@@ -33,12 +46,12 @@ class SCP:
         self.all_solutions = all_solutions
 
         self.call_stack = []
-        self.fixed_variables = []
+        self.fixed_variables = []  # TODO replace with initial constraints ? + docstring
         self.constraints = dict()
         self.pointer = -1
 
         self.state = None
-        self.solutions = []  # TODO
+        self.solutions = []
 
     def load_data(self, file_path, type_=None):
         """
@@ -198,8 +211,23 @@ class SCP:
         """
         Arrange call stack
         """
-        # TODO
-        pass
+        if self.order == 'max_dom':
+            def key_(v):
+                return -v.domain_size()
+        elif self.order == 'min_dom':
+            def key_(v):
+                return v.domain_size()
+        elif self.order == 'max_con':
+            def key_(v):
+                return -len(self.constraints[v])
+        elif self.order == 'min_con':
+            def key_(v):
+                return len(self.constraints[v])
+        else:
+            def key_(v):
+                return 0
+
+        self.call_stack[self.pointer + 1:] = sorted(self.call_stack[self.pointer + 1:], key=key_)
 
     def _step_forward(self):
         """
@@ -301,6 +329,8 @@ class SCP:
 
         self._step_forward()
         while True:
+            if self.dynamic_ordering:
+                self._order_stack()
             if self.pointer == len(self.call_stack):
                 self._save_state_as_solution()
                 if not self.all_solutions:
@@ -430,7 +460,7 @@ class _Variable:
         """
         self.domain = self.state_stack.pop()
 
-    def domain_size(self):
+    def domain_size(self):  # TODO make property
         """
         Get size of domain
 
