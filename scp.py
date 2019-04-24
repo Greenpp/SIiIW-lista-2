@@ -19,6 +19,7 @@ class SCP:
         dynamic_ordering    If call stack is being ordered during the search
         all_solutions       If all solutions should be found
         call_stack          List of variables in filling order
+        initial_constraints List of pairs (constraint, variable) which should be purged at the beginning
         constraints         Dictionary of variable: list of constraints its included into
         pointer             Index of variable currently changed, solving terminates when out of stack range
         state               Current problem state
@@ -47,7 +48,7 @@ class SCP:
         self.all_solutions = all_solutions
 
         self.call_stack = []
-        self.fixed_variables = []  # TODO replace with initial constraints ? + docstring
+        self.initial_constraints = []
         self.constraints = dict()
         self.pointer = -1
 
@@ -118,7 +119,6 @@ class SCP:
             columns = [[row[i] for row in self.state] for i in range(len(self.state))]
 
             # Load constraints
-            # TODO add constraints as initial
             for line in f:
                 line = line.rstrip()
 
@@ -136,6 +136,7 @@ class SCP:
                         constraint_row = SkyscrapperRowConstraint(row)
                         if val != 0:
                             constraint_vis = SkyscrapperVisibilityConstraint(row, val)
+                            self.initial_constraints.append((constraint_vis, None))
 
                         for var in row:
                             self.constraints[var].append(constraint_row)
@@ -181,8 +182,6 @@ class SCP:
                     # Add only mutable variables to stack
                     if not var.fixed:
                         self.call_stack.append(var)
-                    else:
-                        self.fixed_variables.append(var)
 
             # Load relations
             f.readline()  # Skip 'REL:'
@@ -205,18 +204,28 @@ class SCP:
                 self.constraints[var1].append(constraint)
                 self.constraints[var2].append(constraint)
 
+                # Add initial constraints for fixed values
+                if var1.fixed:
+                    self.initial_constraints.append((constraint, var1))
+                if var2.fixed:
+                    self.initial_constraints.append((constraint, var2))
+
             # Create rows and columns constrains
             for i in range(n):
                 row_vars = self.state[i]
                 col_vars = [self.state[r][i] for r in range(n)]
 
                 row_constraint = FutoshikiRowConstraint(row_vars)
-                for var in row_vars:
-                    self.constraints[var].append(row_constraint)
-
                 col_constraint = FutoshikiRowConstraint(col_vars)
-                for var in col_vars:
-                    self.constraints[var].append(col_constraint)
+                for row_var, col_var in zip(row_vars, col_vars):
+                    self.constraints[row_var].append(row_constraint)
+                    self.constraints[col_var].append(col_constraint)
+
+                    # Add initial constraints for fixed values
+                    if row_var.fixed:
+                        self.initial_constraints.append((row_constraint, row_var))
+                    if col_var.fixed:
+                        self.initial_constraints.append((col_constraint, col_var))
 
         return True
 
@@ -300,10 +309,10 @@ class SCP:
         :return:    If purge was successful
         """
         success = True
-        for variable in self.fixed_variables:
-            for constraint in self.constraints[variable]:
-                if not constraint.purge(variable):
-                    success = False
+        for constraint, var in self.initial_constraints:
+            if not constraint.purge(var):
+                success = False
+                break
 
         return success
 
