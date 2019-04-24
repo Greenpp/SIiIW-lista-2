@@ -112,8 +112,8 @@ class SCP:
                     pos = (i, j)
                     var = _Variable(pos, default_domain.copy())
 
+                    self.constraints[var] = []
                     self.state[i].append(var)
-
                     self.call_stack.append(var)
 
             columns = [[row[i] for row in self.state] for i in range(len(self.state))]
@@ -121,27 +121,27 @@ class SCP:
             # Load constraints
             for line in f:
                 line = line.rstrip()
+                side, *values = line.split(';')
 
-                for side, *values in line.split(';'):
-                    if side == 'G':
-                        constraint_rows = columns
-                    elif side == 'D':
-                        constraint_rows = (list(reversed(c)) for c in columns)
-                    elif side == 'L':
-                        constraint_rows = self.state
-                    elif side == 'P':
-                        constraint_rows = (list(reversed(r)) for r in self.state)
+                if side == 'G':
+                    constraint_rows = columns
+                elif side == 'D':
+                    constraint_rows = (list(reversed(c)) for c in columns)
+                elif side == 'L':
+                    constraint_rows = self.state
+                elif side == 'P':
+                    constraint_rows = (list(reversed(r)) for r in self.state)
 
-                    for row, val in zip(constraint_rows, values):
-                        constraint_row = SkyscrapperRowConstraint(row)
+                for row, val in zip(constraint_rows, map(int, values)):
+                    constraint_row = SkyscrapperRowConstraint(row)
+                    if val != 0:
+                        constraint_vis = SkyscrapperVisibilityConstraint(row, val)
+                        self.initial_constraints.append((constraint_vis, None))
+
+                    for var in row:
+                        self.constraints[var].append(constraint_row)
                         if val != 0:
-                            constraint_vis = SkyscrapperVisibilityConstraint(row, val)
-                            self.initial_constraints.append((constraint_vis, None))
-
-                        for var in row:
-                            self.constraints[var].append(constraint_row)
-                            if var != 0:
-                                self.constraints[var].append(constraint_vis)
+                            self.constraints[var].append(constraint_vis)
 
         return True
 
@@ -309,10 +309,12 @@ class SCP:
         :return:    If purge was successful
         """
         success = True
+        if self.method == 'back':
+            return True
+
         for constraint, var in self.initial_constraints:
             if not constraint.purge(var):
-                success = False
-                break
+                return False
 
         return success
 
