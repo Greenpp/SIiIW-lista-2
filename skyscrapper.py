@@ -69,6 +69,7 @@ class SkyscrapperVisibilityConstraint:
         """
         self.vars_ = vars_
         self.in_sight = int(in_sight)
+        self.domain_size = int(self.vars_[0].domain_size)
 
     def check(self):
         """
@@ -76,13 +77,13 @@ class SkyscrapperVisibilityConstraint:
 
         :return:    If constraint is meet
         """
-        heights = [v.value for v in self.vars_]
-        if None in heights:
-            return True
+        heights = (v.value for v in self.vars_)
 
         max_height = 0
         visible = 0
         for height in heights:
+            if height is None:
+                return True
             if height > max_height:
                 visible += 1
                 max_height = height
@@ -99,8 +100,18 @@ class SkyscrapperVisibilityConstraint:
 
         :return:    If all domains are left with at least one value
         """
-        # TODO
-        pass
+        valid_domains = True
+
+        if var is None:
+            for i, row_var in enumerate(self.vars_):
+                row_var.filter_domain(lambda x: x <= (self.domain_size - self.in_sight + i + 1))
+                if row_var.domain_size == 0:
+                    return False
+        else:
+            # TODO
+            pass
+
+        return valid_domains
 
     def reverse_purge(self, var):
         """
