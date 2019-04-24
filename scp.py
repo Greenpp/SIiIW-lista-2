@@ -124,36 +124,22 @@ class SCP:
 
                 for side, *values in line.split(';'):
                     if side == 'G':
-                        for row, val in zip(columns, values):
-                            constraint_row = SkyscrapperRowConstraint(row)
-                            constraint_vis = SkyscrapperVisibilityConstraint(row, val)
-
-                            for var in row:
-                                self.constraints[var].append(constraint_row)
-                                self.constraints[var].append(constraint_vis)
+                        constraint_rows = columns
                     elif side == 'D':
-                        for row, val in zip(columns, values):
-                            constraint_row = SkyscrapperRowConstraint(row)
-                            constraint_vis = SkyscrapperVisibilityConstraint(list(reversed(row)), val)
-
-                            for var in row:
-                                self.constraints[var].append(constraint_row)
-                                self.constraints[var].append(constraint_vis)
+                        constraint_rows = (list(reversed(c)) for c in columns)
                     elif side == 'L':
-                        for row, val in zip(self.state, values):
-                            constraint_row = SkyscrapperRowConstraint(row)
+                        constraint_rows = self.state
+                    elif side == 'P':
+                        constraint_rows = (list(reversed(r)) for r in self.state)
+
+                    for row, val in zip(constraint_rows, values):
+                        constraint_row = SkyscrapperRowConstraint(row)
+                        if val != 0:
                             constraint_vis = SkyscrapperVisibilityConstraint(row, val)
 
-                            for var in row:
-                                self.constraints[var].append(constraint_row)
-                                self.constraints[var].append(constraint_vis)
-                    elif side == 'P':
-                        for row, val in zip(self.state, values):
-                            constraint_row = SkyscrapperRowConstraint(row)
-                            constraint_vis = SkyscrapperVisibilityConstraint(list(reversed(row)), val)
-
-                            for var in row:
-                                self.constraints[var].append(constraint_row)
+                        for var in row:
+                            self.constraints[var].append(constraint_row)
+                            if var != 0:
                                 self.constraints[var].append(constraint_vis)
 
         return True
