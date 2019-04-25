@@ -1,3 +1,5 @@
+from time import time
+
 from futoshiki import FutoshikiRowConstraint, FutoshikiRelationConstraint
 from skyscrapper import SkyscrapperRowConstraint, SkyscrapperVisibilityConstraint
 
@@ -54,6 +56,11 @@ class SCP:
 
         self.state = None
         self.solutions = []
+
+        self.start_time = None
+        self.end_time = None
+        self.returns = 0
+        self.validations = 0
 
     def load_data(self, file_path, type_=None):
         """
@@ -269,6 +276,8 @@ class SCP:
         current_var.value = None
         self.pointer -= 1
 
+        self.returns += 1
+
         if self.method == 'forward' and self.pointer > -1:
             self._reverse_purge()
 
@@ -288,6 +297,7 @@ class SCP:
         """
         current_var = self._current_variable()
         for constraint in self.constraints[current_var]:
+            self.validations += 1
             if not constraint.check():
                 return False
 
@@ -313,6 +323,7 @@ class SCP:
             return True
 
         for constraint, var in self.initial_constraints:
+            self.validations += 1
             if not constraint.purge(var):
                 return False
 
@@ -327,6 +338,7 @@ class SCP:
         success = True
         current_var = self._current_variable()
         for constraint in self.constraints[current_var]:
+            self.validations += 1
             if not constraint.purge(current_var):
                 success = False
 
@@ -340,16 +352,37 @@ class SCP:
         for constraint in self.constraints[current_var]:
             constraint.reverse_purge(current_var)
 
+    def show_stats(self):
+        """
+        Print statistics about last calculations
+        """
+        time_delta = round(self.end_time - self.start_time, 6)
+
+        print(f'Calculated in {time_delta}s, with {self.returns} returns and {self.validations} validations')
+
+    def get_stats(self):
+        """
+        Get statistics about last calculation
+
+        :return: time_delta, returns, validations
+        """
+        time_delta = round(self.end_time - self.start_time, 6)
+
+        return time_delta, self.returns, self.validations
+
     def run(self):
         """
         Solve problem and return final state
 
         :return:    Final state if successful or None if failed
         """
+        self.start_time = time()
+
         # Initial constraints check and ordering
         self._order_stack()
         forward_integrity = self._initial_purge()
         if not forward_integrity:
+            self.end_time = time()
             return None
 
         self._step_forward()
@@ -362,6 +395,7 @@ class SCP:
             if self.pointer == len(self.call_stack):
                 self._save_state_as_solution()
                 if not self.all_solutions:
+                    self.end_time = time()
                     return None
 
                 self.pointer -= 1
@@ -381,6 +415,7 @@ class SCP:
                 while not self._current_variable().domain_size:
                     self._step_backward()
                     if self.pointer < 0:
+                        self.end_time = time()
                         return None
                 self._load_value()
 
