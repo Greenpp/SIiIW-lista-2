@@ -72,6 +72,7 @@ class SkyscrapperVisibilityConstraint:
         """
         self.vars_ = vars_
         self.in_sight = int(in_sight)
+        self.domain_size = int(self.vars_[0].domain_size)
 
         self.domain_size = int(self.vars_[0].domain_size)
         self.min_field = vars_[0].domain_size
@@ -82,13 +83,13 @@ class SkyscrapperVisibilityConstraint:
 
         :return:    If constraint is meet
         """
-        heights = [v.value for v in self.vars_]
-        if None in heights:
-            return True
+        heights = (v.value for v in self.vars_)
 
         max_height = 0
         visible = 0
         for height in heights:
+            if height is None:
+                return True
             if height > max_height:
                 visible += 1
                 max_height = height
