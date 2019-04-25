@@ -1,3 +1,6 @@
+from itertools import islice
+
+
 class SkyscrapperRowConstraint:
     """
     Constraint of unique values in skyscrapper row
@@ -70,6 +73,9 @@ class SkyscrapperVisibilityConstraint:
         self.vars_ = vars_
         self.in_sight = int(in_sight)
 
+        self.domain_size = int(self.vars_[0].domain_size)
+        self.min_field = vars_[0].domain_size
+
     def check(self):
         """
         Check if constraint is meet
@@ -99,8 +105,39 @@ class SkyscrapperVisibilityConstraint:
 
         :return:    If all domains are left with at least one value
         """
-        # TODO
-        pass
+        valid_domains = True
+
+        if var is None:
+            for i, row_var in enumerate(self.vars_):
+                row_var.filter_domain(lambda x: x <= (self.domain_size - self.in_sight + i + 1))
+                if row_var.domain_size == 0:
+                    return False
+        else:
+            # Find index of the new var
+            new_var_pos = self.vars_.index(var)
+            if new_var_pos < self.min_field:
+                # Check if the value will be covered
+                max_height = 0
+                for prev_var in islice(self.vars_, new_var_pos):
+                    if prev_var.value is not None:
+                        prev_val = prev_var.value
+                    elif prev_var.domain_size > 0:
+                        prev_val = min(prev_var.domain)
+                    else:
+                        prev_val = 0
+                    if prev_val > max_height:
+                        max_height = prev_val
+                if max_height > var.value:
+                    # Shift min highest value index if the value will be covered
+                    if self.min_field < len(self.vars_):
+                        domain_size = len(self.vars_)
+                        self.vars_[self.min_field].push_state()
+                        self.vars_[self.min_field].filter_domain(lambda x: x != domain_size)
+                        if self.vars_[self.min_field].domain_size == 0:
+                            valid_domains = False
+                    self.min_field += 1
+
+        return valid_domains
 
     def reverse_purge(self, var):
         """
@@ -108,6 +145,22 @@ class SkyscrapperVisibilityConstraint:
 
         :param var: Variable which purge will be reversed
         """
-        for row_var in self.vars_:
-            if row_var != var and row_var.value is None:
-                row_var.pop_state()
+        # Find index of the var
+        new_var_pos = self.vars_.index(var)
+        if new_var_pos < self.min_field:
+            # Check if the value will be covered
+            max_height = 0
+            for prev_var in islice(self.vars_, new_var_pos):
+                if prev_var.value is not None:
+                    prev_val = prev_var.value
+                elif prev_var.domain_size > 0:
+                    prev_val = min(prev_var.domain)
+                else:
+                    prev_val = 0
+                if prev_val > max_height:
+                    max_height = prev_val
+            if max_height > var.value:
+                # Reverse shift and state if the value will be covered
+                self.min_field -= 1
+                if self.min_field < len(self.vars_):
+                    self.vars_[self.min_field].pop_state()
